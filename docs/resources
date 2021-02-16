@@ -1,0 +1,4 @@
+POST cards/ wo ID
+GET cards/ all
+PATCH cards/ update all except IDs
+GET cards/{id}

@@ -1,0 +1,13 @@
+Id: UUID,
+CustomerId: UUID,
+OrgId: UUID,
+ProgramId: UUID,
+AccountId: UUID,
+PrintedName: char(256),
+Password: char(256) encripted,
+ExpirationDate: char(4) encripted,
+IssuingDate: datetime,
+PAN: char(256) encripted,
+Type: [Plastic, Recurring, Temporary]
+Status: [Enabled, Cancelled, Blocked]
+CVV: char(4)
