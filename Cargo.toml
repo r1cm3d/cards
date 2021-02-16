@@ -1,9 +1,10 @@
 [package]
 name = "cards"
-version = "0.1.0"
-authors = ["ricardomedeirosdacostajunior <ricardo.medeiros@pismo.io>"]
+version = "0.0.1"
+authors = ["r1cm3d <ricardo.medeiros@pismo.io>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+actix-web = "3"
