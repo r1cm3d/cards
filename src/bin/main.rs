@@ -1,4 +1,5 @@
-use actix_web::{get, App, HttpResponse, HttpServer, Responder};
+use actix_web::{App, HttpServer};
+use cards::handler;
 
 static ADDRESS: &str = "127.0.0.1";
 static PORT: &str = "8080";
@@ -7,14 +8,9 @@ static PORT: &str = "8080";
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
-            .service(status)
+            .service(handler::status::status)
     })
         .bind(format!("{}:{}", ADDRESS, PORT))?
         .run()
         .await
-}
-
-#[get("/")]
-async fn status() -> impl Responder {
-    HttpResponse::Ok().body("OK")
 }
