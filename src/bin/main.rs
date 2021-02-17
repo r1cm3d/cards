@@ -5,10 +5,7 @@ static PORT: &str = "8080";
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
-        App::new()
-            .configure(cards::config::default)
-    })
+    HttpServer::new(|| App::new().configure(cards::config::default))
         .bind(format!("{}:{}", ADDRESS, PORT))?
         .run()
         .await
