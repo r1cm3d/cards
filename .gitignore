@@ -1,4 +1,5 @@
 /target
 .localstack
+.idea
 terraform/*tfstate*
 terraform/.terraform*
