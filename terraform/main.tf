@@ -16,60 +16,26 @@ provider "aws" {
 }
 
 variable "project" {
-  default = "aws-poc"
+  default = "cards"
 }
 
-resource "aws_iam_user" "aws-poc" {
-  name = "aws_poc"
+resource "aws_iam_user" "cards" {
+  name = "cards"
   tags = {
     project = var.project
     env     = var.account
   }
 }
 
-resource "aws_iam_policy" "aws_poc_sqs_policy" {
-  name = "aws_poc_sqs_policy"
-
-  policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "sqs",
-            "Effect": "Allow",
-            "Action": [
-                "sqs:GetQueueUrl",
-                "sqs:ChangeMessageVisibility",
-                "sqs:SendMessageBatch",
-                "sqs:ReceiveMessage",
-                "sqs:SendMessage",
-                "sqs:GetQueueAttributes",
-                "sqs:ListQueueTags",
-                "sqs:ListDeadLetterSourceQueues",
-                "sqs:ChangeMessageVisibilityBatch",
-                "sqs:DeleteMessage"
-            ],
-            "Resource": [
-                "${module.disputes_sqs_queue.this_sqs_queue_arn}",
-                "${module.chargeback_update_sqs_queue.this_sqs_queue_arn}",
-                "${module.chargeback_sqs_queue.this_sqs_queue_arn}"
-            ]
-        }
-    ]
-}
-EOF
-}
-
 resource "aws_iam_policy_attachment" "dynamo_policy_attach" {
-  name = "aws-poc-dynamo-attachment"
+  name = "cards-dynamo-attachment"
   users = [
-  aws_iam_user.aws-poc.name]
-  policy_arn = aws_iam_policy.aws_poc_dynamo_policy.arn
+  aws_iam_user.cards.name]
+  policy_arn = aws_iam_policy.cards_dynamo_policy.arn
 }
 
-
-resource "aws_iam_policy" "aws_poc_dynamo_policy" {
-  name = "aws-poc-dynamo-policy"
+resource "aws_iam_policy" "cards_dynamo_policy" {
+  name = "cards-dynamo-policy"
 
   policy = <<EOF
 {
@@ -87,7 +53,7 @@ resource "aws_iam_policy" "aws_poc_dynamo_policy" {
                 "dynamodb:PutItem"
             ],
             "Resource": [
-                "${aws_dynamodb_table.chargeback.arn}"
+                "${aws_dynamodb_table.cards.arn}"
             ]
         }
     ]

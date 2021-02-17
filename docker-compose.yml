@@ -1,0 +1,18 @@
+version: '3.9'
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: dynamodb
+    ports:
+      - '4563-4599:4563-4599'
+      - '8055:8080'
+    environment:
+      - SERVICES=iam,dynamodb
+      - DEFAULT_REGION=us-east-1
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+    volumes:
+      - './.localstack:/tmp/localstack'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    healthcheck:
+      test: curl -f "http://localhost:4566/health"
