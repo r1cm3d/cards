@@ -26,8 +26,12 @@ make run
 * [Prerequisites](#prerequisites)
 * [About the Project](#about-the-project)
 * [Getting Started](#getting-started)
+* [Initializing](#initializing)
+* [Linting](#linting)
+* [Formatting](#formatting)
 * [Testing](#testing)
-* [Run](#run)
+* [Running](#running)
+* [Stopping](#stopping)
 
 ## About The Project
 
@@ -58,7 +62,7 @@ make fmt
 make test
 ```
 
-### Run
+### Running
 #### Build all dependencies and run
 ```sh
 make run
