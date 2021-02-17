@@ -3,9 +3,9 @@
 . env/.aws.env
 
 for t in $(./.list-tables.sh); do
+  echo "Table: $t"
 	aws dynamodb delete-table \
 		--table-name "$t" \
 		--region "$REGION" \
-		--endpoint-url "$ENDPOINT" \
-		--cli-connect-timeout 6000 2>&1 1>/dev/null
+		--endpoint-url "$ENDPOINT" > /dev/null 2>&1
 done

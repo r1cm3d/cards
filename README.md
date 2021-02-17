@@ -37,6 +37,22 @@ Web server application that provides a repository for debit and credit cards
 
 To run this project locally you must have the technologies as the [prerequisites section](#prerequisites)
 
+### Initializing
+#### It will create the container and all dependencies
+```sh
+make init
+```
+
+### Linting
+```sh
+make lint
+```
+
+### Formatting
+```sh
+make fmt
+```
+
 ### Testing
 ```sh
 make test
@@ -46,4 +62,10 @@ make test
 #### Build all dependencies and run
 ```sh
 make run
+```
+
+### Stopping
+#### Stop containers
+```sh
+make down
 ```
