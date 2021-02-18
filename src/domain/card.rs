@@ -5,10 +5,10 @@ pub trait Creator {
     fn create(&self, dto: crate::dto::Card) -> Result<crate::dto::Card, Error>;
 }
 
-pub struct Service {}
+pub(crate) struct Service {}
 
 impl Service {
-    pub fn new() -> Service {
+    pub(crate) fn new() -> Service {
         Service {}
     }
 }
