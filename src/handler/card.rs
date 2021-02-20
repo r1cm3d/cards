@@ -1,17 +1,17 @@
 use crate::domain::card;
 use crate::dto;
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse};
 
 pub async fn create(
     service: web::Data<Box<dyn card::Creator>>,
     payload: web::Json<dto::Card>,
-) -> impl Responder {
+) -> HttpResponse {
     let dto: dto::Card = payload.into_inner();
-    println!("DTO: {}", dto);
 
-    //TODO: Fix it adjust the return
-    service.create(dto);
-    HttpResponse::Ok().body("OK")
+    match service.create(dto) {
+        Ok(card) => HttpResponse::Ok().json(card),
+        Err(err) => HttpResponse::BadRequest().body(err.to_string())
+    }
 }
 
 pub static SCOPE: &str = "/cards";
@@ -19,12 +19,12 @@ pub static SCOPE: &str = "/cards";
 #[cfg(test)]
 mod tests {
     use std::fmt::Error;
-    use actix_web::web;
-    use actix_web::web::Data;
+    use actix_web::web::{Json, Data};
     use mockall::mock;
     use mockall::predicate::eq;
     use crate::domain::card::Creator;
     use crate::dto;
+    use std::str;
 
     #[actix_rt::test]
     async fn must_call_card_service_succes() {
@@ -50,13 +50,20 @@ mod tests {
             status: String::from("ENABLED"),
             cvv: String::from("945"),
         });
-
          mock.expect_create()
              .with(eq(a_card()))
-             .return_const(exp);
+             .return_const(exp.clone());
+        let exp = exp.unwrap();
 
-        //TODO: validate the return
-        super::create(Data::new(Box::new(mock)),web::Json(a_card())).await;
+        let response =  super::create(Data::new(Box::new(mock)),Json(a_card())).await;
+        let act = match response.body().as_ref() {
+            Some(actix_web::body::Body::Bytes(bytes)) => bytes,
+            _ => panic!("Response error"),
+        };
+        let act = str::from_utf8(act).expect("Failed to parse Body::Bytes into str");
+        let act = serde_json::from_str::<dto::Card>(act).expect("Failed in parse body into json");
+
+        assert_eq!(exp, act)
     }
 
     fn a_card() -> dto::Card {

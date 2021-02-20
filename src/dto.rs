@@ -1,8 +1,8 @@
 use indoc::indoc;
-use serde::Deserialize;
+use serde::{Serialize,Deserialize};
 use std::fmt;
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[derive(Debug, PartialEq, Clone)]
 pub struct Card {
     #[serde(default)]

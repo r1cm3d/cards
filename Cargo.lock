@@ -430,6 +430,7 @@ dependencies = [
  "indoc",
  "mockall",
  "serde",
+ "serde_json",
  "uuid",
 ]
 
