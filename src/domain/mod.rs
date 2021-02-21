@@ -1,1 +1,1 @@
-pub mod card;
+pub(crate) mod card;

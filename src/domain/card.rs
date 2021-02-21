@@ -1,8 +1,7 @@
-use crate::dto::Card;
-use std::fmt::Error;
+use crate::protocol;
 
 pub trait Creator {
-    fn create(&self, dto: crate::dto::Card) -> Result<crate::dto::Card, Error>;
+    fn create(&self, dto: protocol::Card) -> Result<protocol::Card, protocol::ValidationError>;
 }
 
 pub(crate) struct Service {}
@@ -14,7 +13,7 @@ impl Service {
 }
 
 impl Creator for Service {
-    fn create(&self, _: Card) -> Result<Card, Error> {
+    fn create(&self, _: protocol::Card) -> Result<protocol::Card, protocol::ValidationError> {
         unimplemented!()
     }
 }
