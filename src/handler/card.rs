@@ -10,22 +10,20 @@ pub async fn create(
 
     match service.create(dto) {
         Ok(card) => HttpResponse::Ok().json(card),
-        Err(err) =>
-            HttpResponse::BadRequest().json(err)
+        Err(err) => HttpResponse::BadRequest().json(err),
     }
 }
-
 
 pub static SCOPE: &str = "/cards";
 
 #[cfg(test)]
 mod tests {
-    use actix_web::web::{Json, Data};
+    use crate::domain::card::Creator;
+    use crate::protocol;
+    use crate::protocol::{Card, ValidationError};
+    use actix_web::web::{Data, Json};
     use mockall::mock;
     use mockall::predicate::eq;
-    use crate::domain::card::Creator;
-    use crate::protocol::{Card, ValidationError};
-    use crate::protocol;
     use std::str;
 
     mock! {
@@ -35,63 +33,43 @@ mod tests {
             }
     }
 
-    //TODO: extract both test into table driven test
-
     #[actix_rt::test]
     async fn must_call_card_service_success() {
-        let mut mock = MockCreator::new();
-        let exp: Result<Card, protocol::ValidationError> = Ok(Card {
-            id: String::from("29ce6541-302b-405e-9dfe-549934d4e4b2"),
-            customer_id: String::from("29ce6541-302b-405e-9dfe-549934d4e4b2"),
-            org_id: String::from("876ce143-6fcb-4c17-aaf1-f02c1d3654ce"),
-            program_id: String::from("00c9e86a-8d55-4a95-884b-4a6faeb9289e"),
-            account_id: String::from("a2d46c49-262e-431d-8f1a-ff5b18b44982"),
-            printed_name: String::from("Baker Mayfield"),
-            password: String::from("0781"),
-            expiration_date: String::from("0702"),
-            issuing_date: String::from("1997-07-16T19:20+01:00"),
-            pan: String::from("5214330278318136"),
-            kind: String::from("PLASTIC"),
-            status: String::from("ENABLED"),
-            cvv: String::from("945"),
-        });
-         mock.expect_create()
-             .with(eq(a_card()))
-             .return_const(exp.clone());
+        let exp: Result<Card, protocol::ValidationError> = Ok(a_persisted_card());
+        let act = call(&exp).await;
+        let act = serde_json::from_str::<Card>(&act).expect("Failed to parse body into Card json");
         let exp = exp.unwrap();
-
-        let response =  super::create(Data::new(Box::new(mock)),Json(a_card())).await;
-        let act = match response.body().as_ref() {
-            Some(actix_web::body::Body::Bytes(bytes)) => bytes,
-            _ => panic!("Response error"),
-        };
-        let act = str::from_utf8(act).expect("Failed to parse Body::Bytes into str");
-        let act = serde_json::from_str::<Card>(act).expect("Failed in parse body into json");
 
         assert_eq!(exp, act)
     }
 
     #[actix_rt::test]
     async fn must_call_card_service_validation_error() {
-        let mut mock = MockCreator::new();
         let exp: Result<Card, protocol::ValidationError> = Err(a_validation_error());
-        mock.expect_create()
-            .with(eq(a_card()))
-            .return_const(exp.clone());
+        let act = call(&exp).await;
+        let act = serde_json::from_str::<ValidationError>(&act)
+            .expect("Failed to parse body into ValidationError json");
         let exp = exp.unwrap_err();
 
-        let response =  super::create(Data::new(Box::new(mock)),Json(a_card())).await;
+        assert_eq!(exp, act)
+    }
+
+    async fn call(exp: &Result<Card, protocol::ValidationError>) -> String {
+        let mut mock = MockCreator::new();
+        mock.expect_create()
+            .with(eq(a_input_card()))
+            .return_const(exp.clone());
+        let response = super::create(Data::new(Box::new(mock)), Json(a_input_card())).await;
         let act = match response.body().as_ref() {
             Some(actix_web::body::Body::Bytes(bytes)) => bytes,
             _ => panic!("Response error"),
         };
         let act = str::from_utf8(act).expect("Failed to parse Body::Bytes into str");
-        let act = serde_json::from_str::<ValidationError>(act).expect("Failed in parse body into json");
 
-        assert_eq!(exp, act)
+        return String::from(act);
     }
 
-    fn a_card() -> Card {
+    fn a_input_card() -> Card {
         Card {
             id: "".to_string(),
             customer_id: String::from("29ce6541-302b-405e-9dfe-549934d4e4b2"),
@@ -109,7 +87,28 @@ mod tests {
         }
     }
 
+    fn a_persisted_card() -> Card {
+        Card {
+            id: String::from("29ce6541-302b-405e-9dfe-549934d4e4b2"),
+            customer_id: String::from("29ce6541-302b-405e-9dfe-549934d4e4b2"),
+            org_id: String::from("876ce143-6fcb-4c17-aaf1-f02c1d3654ce"),
+            program_id: String::from("00c9e86a-8d55-4a95-884b-4a6faeb9289e"),
+            account_id: String::from("a2d46c49-262e-431d-8f1a-ff5b18b44982"),
+            printed_name: String::from("Baker Mayfield"),
+            password: String::from("0781"),
+            expiration_date: String::from("0702"),
+            issuing_date: String::from("1997-07-16T19:20+01:00"),
+            pan: String::from("5214330278318136"),
+            kind: String::from("PLASTIC"),
+            status: String::from("ENABLED"),
+            cvv: String::from("945"),
+        }
+    }
+
     fn a_validation_error() -> ValidationError {
-        ValidationError::new(String::from("a_invalid_field"), String::from("a_invalid_value"))
+        ValidationError::new(
+            String::from("a_invalid_field"),
+            String::from("a_invalid_value"),
+        )
     }
 }

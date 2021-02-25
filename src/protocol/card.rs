@@ -1,9 +1,8 @@
 use indoc::indoc;
-use serde::{Serialize,Deserialize};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Serialize, Deserialize)]
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Card {
     #[serde(default)]
     pub(crate) id: String,
