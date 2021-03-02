@@ -16,6 +16,14 @@ impl ValidationError {
             inputted_value,
         }
     }
+
+    pub fn field_name(&self) -> String {
+        self.field_name.clone()
+    }
+
+    pub fn inputted_value(&self) -> String {
+        self.inputted_value.clone()
+    }
 }
 
 impl fmt::Display for ValidationError {
