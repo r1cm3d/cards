@@ -33,21 +33,46 @@ struct Entity {
 
 impl Entity {
     fn from(card: protocol::Card) -> Result<Entity, protocol::ValidationError> {
-        let customer_id = Uuid::parse_str(card.customer_id.as_str());
-
-        let customer_id = match customer_id {
+        let customer_id = match Uuid::parse_str(card.customer_id.as_str()) {
             Ok(ci) => ci,
             Err(err) => return Err(protocol::ValidationError::new(String::from("customer_id"), card.customer_id.clone()))
         };
 
+        let org_id = match Uuid::parse_str(card.org_id.as_str()) {
+            Ok(ci) => ci,
+            Err(err) => return Err(protocol::ValidationError::new(String::from("org_id"), card.org_id.clone()))
+        };
+
+        let program_id = match Uuid::parse_str(card.program_id.as_str()) {
+            Ok(ci) => ci,
+            Err(err) => return Err(protocol::ValidationError::new(String::from("program_id"), card.program_id.clone()))
+        };
+
+        let account_id = match Uuid::parse_str(card.account_id.as_str()) {
+            Ok(ci) => ci,
+            Err(err) => return Err(protocol::ValidationError::new(String::from("account_id"), card.account_id.clone()))
+        };
+
+        let printed_name = match card.printed_name.is_empty() {
+            true => return Err(protocol::ValidationError::new(String::from("printed_name"), card.printed_name.clone())),
+            false => card.printed_name
+        };
+
+        let password = match card.password.is_empty() {
+            true => return Err(protocol::ValidationError::new(String::from("password"), card.password.clone())),
+            false => card.password
+        };
+
+        // TODO: implement the rest here
+
         Ok(Entity{
             id: Default::default(),
             customer_id,
-            org_id: Default::default(),
-            program_id: Default::default(),
-            account_id: Default::default(),
-            printed_name: "".to_string(),
-            password: "".to_string(),
+            org_id,
+            program_id,
+            account_id,
+            printed_name,
+            password,
             expiration_date: NaiveDateTime::parse_from_str("2020-04-12", "%Y-%m-%d").unwrap(),
             issuing_date: NaiveDateTime::parse_from_str("2020-04-12", "%Y-%m-%d").unwrap(),
             pan: "".to_string(),
@@ -97,11 +122,31 @@ mod tests {
     use crate::protocol;
     use super::*;
 
-    //TODO: create macro to test all invalid fields
+    macro_rules! test_invalid_field {
+    ($name:ident, $input:expr, $exp:expr) => {
+        #[test]
+        fn $name() {
+            let svc = Service::new();
 
-    #[test]
-    fn test_invalid_customer_id() {
-        let card = protocol::Card{
+            let act = svc.create($input).unwrap_err();
+
+            assert_eq!(act, $exp);
+        }
+    }}
+
+    test_invalid_field!(test_invalid_customer_id, a_card_without_customer_id(), customer_id_error());
+    test_invalid_field!(test_invalid_org_id, a_card_without_org_id(), org_id_error());
+    test_invalid_field!(test_invalid_program_id, a_card_without_program_id(), program_id_error());
+    test_invalid_field!(test_invalid_printed_name, a_card_without_printed_name(), printed_name_error());
+    test_invalid_field!(test_invalid_password, a_card_without_password(), password_error());
+    // test_invalid_field!(test_invalid_expiration_date, a_card_without_expiration_date(), expiration_date_error());
+    // test_invalid_field!(test_invalid_kind, a_card_without_kind(), kind_error());
+    // test_invalid_field!(test_invalid_cvv, a_card_without_cvv(), cvv_error());
+
+
+    //TODO: extract those functions to macro
+    fn a_card_without_customer_id() -> protocol::Card {
+        protocol::Card{
             id: "".to_string(),
             customer_id: "".to_string(),
             org_id: "".to_string(),
@@ -115,13 +160,187 @@ mod tests {
             kind: "".to_string(),
             status: "".to_string(),
             cvv: "".to_string()
-        };
-        let svc = Service::new();
-
-        let err = svc.create(card).unwrap_err();
-
-        assert_eq!(err.field_name(), String::from("customer_id"));
-        assert_eq!(err.inputted_value(), String::from(""));
+        }
     }
 
+    fn a_card_without_org_id() -> protocol::Card {
+        protocol::Card{
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "".to_string(),
+            program_id: "".to_string(),
+            account_id: "".to_string(),
+            printed_name: "".to_string(),
+            password: "".to_string(),
+            expiration_date: "".to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "".to_string(),
+            status: "".to_string(),
+            cvv: "".to_string()
+        }
+    }
+
+    fn a_card_without_program_id() -> protocol::Card {
+        protocol::Card{
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "3ee15c70-b7b4-4b87-ba43-38eba70f98c4".to_string(),
+            program_id: "".to_string(),
+            account_id: "".to_string(),
+            printed_name: "".to_string(),
+            password: "".to_string(),
+            expiration_date: "".to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "".to_string(),
+            status: "".to_string(),
+            cvv: "".to_string()
+        }
+    }
+
+    fn a_card_without_account_id() -> protocol::Card {
+        protocol::Card{
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "3ee15c70-b7b4-4b87-ba43-38eba70f98c4".to_string(),
+            program_id: "c0a4cc71-5c11-43cb-b74f-2b577012449f".to_string(),
+            account_id: "".to_string(),
+            printed_name: "".to_string(),
+            password: "".to_string(),
+            expiration_date: "".to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "".to_string(),
+            status: "".to_string(),
+            cvv: "".to_string()
+        }
+    }
+
+    fn a_card_without_printed_name() -> protocol::Card {
+        protocol::Card{
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "3ee15c70-b7b4-4b87-ba43-38eba70f98c4".to_string(),
+            program_id: "c0a4cc71-5c11-43cb-b74f-2b577012449f".to_string(),
+            account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
+            printed_name: "".to_string(),
+            password: "".to_string(),
+            expiration_date: "".to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "".to_string(),
+            status: "".to_string(),
+            cvv: "".to_string()
+        }
+    }
+
+    fn a_card_without_password() -> protocol::Card {
+        protocol::Card{
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "3ee15c70-b7b4-4b87-ba43-38eba70f98c4".to_string(),
+            program_id: "c0a4cc71-5c11-43cb-b74f-2b577012449f".to_string(),
+            account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
+            printed_name: "RICARDO MEDEIROS".to_string(),
+            password: "".to_string(),
+            expiration_date: "".to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "".to_string(),
+            status: "".to_string(),
+            cvv: "".to_string()
+        }
+    }
+
+    fn a_card_without_expiration_date() -> protocol::Card {
+        protocol::Card{
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "3ee15c70-b7b4-4b87-ba43-38eba70f98c4".to_string(),
+            program_id: "c0a4cc71-5c11-43cb-b74f-2b577012449f".to_string(),
+            account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
+            printed_name: "RICARDO MEDEIROS".to_string(),
+            password: "321421".to_string(),
+            expiration_date: "".to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "".to_string(),
+            status: "".to_string(),
+            cvv: "".to_string()
+        }
+    }
+
+    fn a_card_without_kind() -> protocol::Card {
+        protocol::Card{
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "3ee15c70-b7b4-4b87-ba43-38eba70f98c4".to_string(),
+            program_id: "c0a4cc71-5c11-43cb-b74f-2b577012449f".to_string(),
+            account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
+            printed_name: "RICARDO MEDEIROS".to_string(),
+            password: "321421".to_string(),
+            expiration_date: "2010-11-12T13:14:15Z".to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "".to_string(),
+            status: "".to_string(),
+            cvv: "".to_string()
+        }
+    }
+
+    fn a_card_without_cvv() -> protocol::Card {
+        protocol::Card{
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "3ee15c70-b7b4-4b87-ba43-38eba70f98c4".to_string(),
+            program_id: "c0a4cc71-5c11-43cb-b74f-2b577012449f".to_string(),
+            account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
+            printed_name: "RICARDO MEDEIROS".to_string(),
+            password: "321421".to_string(),
+            expiration_date: "2010-11-12T13:14:15Z".to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "PLASTIC".to_string(),
+            status: "".to_string(),
+            cvv: "".to_string()
+        }
+    }
+
+    //TODO: extract those functions to macros
+    fn customer_id_error() -> protocol::ValidationError {
+        protocol::ValidationError::new(String::from("customer_id"), String::from(""))
+    }
+
+    fn org_id_error() -> protocol::ValidationError {
+        protocol::ValidationError::new(String::from("org_id"), String::from(""))
+    }
+
+    fn program_id_error() -> protocol::ValidationError {
+        protocol::ValidationError::new(String::from("program_id"), String::from(""))
+    }
+
+    fn account_id_error() -> protocol::ValidationError {
+        protocol::ValidationError::new(String::from("account_id"), String::from(""))
+    }
+
+    fn printed_name_error() -> protocol::ValidationError {
+        protocol::ValidationError::new(String::from("printed_name"), String::from(""))
+    }
+
+    fn password_error() -> protocol::ValidationError {
+        protocol::ValidationError::new(String::from("password"), String::from(""))
+    }
+
+    fn expiration_date_error() -> protocol::ValidationError {
+        protocol::ValidationError::new(String::from("expiration_date"), String::from(""))
+    }
+
+    fn kind_error() -> protocol::ValidationError {
+        protocol::ValidationError::new(String::from("kind"), String::from(""))
+    }
+
+    fn cvv_error() -> protocol::ValidationError {
+        protocol::ValidationError::new(String::from("cvv"), String::from(""))
+    }
 }
