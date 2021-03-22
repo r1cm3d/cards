@@ -1,11 +1,24 @@
 use crate::protocol;
 use uuid::Uuid;
 use chrono::{DateTime, NaiveDate, NaiveDateTime};
+use std::format;
+use std::fmt::Error;
 
 enum Kind {
     Plastic,
     Recurring,
-    Temporary
+    Temporary,
+}
+
+impl Kind {
+    fn from(description: &str) -> Result<Kind, String>  {
+        match description.to_uppercase().as_str() {
+            "PLASTIC" => Ok(Kind::Plastic),
+            "RECURRING" => Ok(Kind::Recurring),
+            "TEMPORARY" => Ok(Kind::Temporary),
+            _ => Err(format!("Unknown kind {}", description))
+        }
+    }
 }
 
 enum Status {
@@ -23,7 +36,7 @@ struct Entity {
     account_id: uuid::Uuid,
     printed_name: String,
     password: String,
-    expiration_date: chrono::NaiveDateTime,
+    expiration_date: String,
     issuing_date: chrono::NaiveDateTime,
     pan: String,
     kind: Kind,
@@ -33,6 +46,7 @@ struct Entity {
 
 impl Entity {
     fn from(card: protocol::Card) -> Result<Entity, protocol::ValidationError> {
+        // TODO: extract Uuid:parse_str validation to a macro
         let customer_id = match Uuid::parse_str(card.customer_id.as_str()) {
             Ok(ci) => ci,
             Err(err) => return Err(protocol::ValidationError::new(String::from("customer_id"), card.customer_id.clone()))
@@ -58,12 +72,26 @@ impl Entity {
             false => card.printed_name
         };
 
+        // TODO: extract String#is_empty() validation to a macro
         let password = match card.password.is_empty() {
             true => return Err(protocol::ValidationError::new(String::from("password"), card.password.clone())),
             false => card.password
         };
 
-        // TODO: implement the rest here
+        let expiration_date = match card.expiration_date.is_empty() {
+            true => return Err(protocol::ValidationError::new(String::from("expiration_date"), card.expiration_date.clone())),
+            false => card.expiration_date
+        };
+
+        let kind = match Kind::from(card.kind.as_str()) {
+            Ok(k) => k,
+            Err(msg) => return Err(protocol::ValidationError::new(String::from("kind"), card.kind))
+        };
+
+        let cvv = match card.cvv.is_empty() {
+            true => return Err(protocol::ValidationError::new(String::from("cvv"), card.cvv.clone())),
+            false => card.cvv
+        };
 
         Ok(Entity{
             id: Default::default(),
@@ -73,12 +101,12 @@ impl Entity {
             account_id,
             printed_name,
             password,
-            expiration_date: NaiveDateTime::parse_from_str("2020-04-12", "%Y-%m-%d").unwrap(),
+            expiration_date,
             issuing_date: NaiveDateTime::parse_from_str("2020-04-12", "%Y-%m-%d").unwrap(),
             pan: "".to_string(),
-            kind: Kind::Plastic,
+            kind,
             status: Status::Enabled,
-            cvv: "".to_string()
+            cvv
         })
     }
 }
@@ -139,12 +167,17 @@ mod tests {
     test_invalid_field!(test_invalid_program_id, a_card_without_program_id(), program_id_error());
     test_invalid_field!(test_invalid_printed_name, a_card_without_printed_name(), printed_name_error());
     test_invalid_field!(test_invalid_password, a_card_without_password(), password_error());
-    // test_invalid_field!(test_invalid_expiration_date, a_card_without_expiration_date(), expiration_date_error());
-    // test_invalid_field!(test_invalid_kind, a_card_without_kind(), kind_error());
-    // test_invalid_field!(test_invalid_cvv, a_card_without_cvv(), cvv_error());
+    test_invalid_field!(test_invalid_expiration_date, a_card_without_expiration_date(), expiration_date_error());
+    test_invalid_field!(test_invalid_kind, a_card_without_kind(), kind_error());
+    test_invalid_field!(test_invalid_cvv, a_card_without_cvv(), cvv_error());
 
+    // TODO: test pattern for printed name
+    // TODO: test pattern for password
+    // TODO: test pattern for expiration date
+    // TODO: test pattern for cvv
+    // TODO: test valid creation
 
-    //TODO: extract those functions to macro
+    // TODO: extract those functions to macro
     fn a_card_without_customer_id() -> protocol::Card {
         protocol::Card{
             id: "".to_string(),
@@ -280,7 +313,7 @@ mod tests {
             account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
             printed_name: "RICARDO MEDEIROS".to_string(),
             password: "321421".to_string(),
-            expiration_date: "2010-11-12T13:14:15Z".to_string(),
+            expiration_date: "0724".to_string(),
             issuing_date: "".to_string(),
             pan: "".to_string(),
             kind: "".to_string(),
@@ -307,7 +340,7 @@ mod tests {
         }
     }
 
-    //TODO: extract those functions to macros
+    // TODO: extract those functions to macros
     fn customer_id_error() -> protocol::ValidationError {
         protocol::ValidationError::new(String::from("customer_id"), String::from(""))
     }
