@@ -43,7 +43,6 @@ struct Entity {
     status: Status,
     cvv: String,
 }
-
 impl Entity {
     fn from(card: protocol::Card) -> Result<Entity, protocol::ValidationError> {
         // TODO: extract Uuid:parse_str validation to a macro
@@ -162,14 +161,14 @@ mod tests {
         }
     }}
 
-    test_invalid_field!(test_invalid_customer_id, a_card_without_customer_id(), customer_id_error());
-    test_invalid_field!(test_invalid_org_id, a_card_without_org_id(), org_id_error());
-    test_invalid_field!(test_invalid_program_id, a_card_without_program_id(), program_id_error());
-    test_invalid_field!(test_invalid_printed_name, a_card_without_printed_name(), printed_name_error());
-    test_invalid_field!(test_invalid_password, a_card_without_password(), password_error());
-    test_invalid_field!(test_invalid_expiration_date, a_card_without_expiration_date(), expiration_date_error());
-    test_invalid_field!(test_invalid_kind, a_card_without_kind(), kind_error());
-    test_invalid_field!(test_invalid_cvv, a_card_without_cvv(), cvv_error());
+    test_invalid_field!(test_invalid_customer_id, a_card_without_customer_id(), empty_error("customer_id"));
+    test_invalid_field!(test_invalid_org_id, a_card_without_org_id(), empty_error("org_id"));
+    test_invalid_field!(test_invalid_program_id, a_card_without_program_id(), empty_error("program_id"));
+    test_invalid_field!(test_invalid_printed_name, a_card_without_printed_name(), empty_error("printed_name"));
+    test_invalid_field!(test_invalid_password, a_card_without_password(), empty_error("password"));
+    test_invalid_field!(test_invalid_expiration_date, a_card_without_expiration_date(), empty_error("expiration_date"));
+    test_invalid_field!(test_invalid_kind, a_card_without_kind(), empty_error("kind"));
+    test_invalid_field!(test_invalid_cvv, a_card_without_cvv(), empty_error("cvv"));
 
     // TODO: test pattern for printed name
     // TODO: test pattern for password
@@ -340,40 +339,7 @@ mod tests {
         }
     }
 
-    // TODO: extract those functions to macros
-    fn customer_id_error() -> protocol::ValidationError {
-        protocol::ValidationError::new(String::from("customer_id"), String::from(""))
-    }
-
-    fn org_id_error() -> protocol::ValidationError {
-        protocol::ValidationError::new(String::from("org_id"), String::from(""))
-    }
-
-    fn program_id_error() -> protocol::ValidationError {
-        protocol::ValidationError::new(String::from("program_id"), String::from(""))
-    }
-
-    fn account_id_error() -> protocol::ValidationError {
-        protocol::ValidationError::new(String::from("account_id"), String::from(""))
-    }
-
-    fn printed_name_error() -> protocol::ValidationError {
-        protocol::ValidationError::new(String::from("printed_name"), String::from(""))
-    }
-
-    fn password_error() -> protocol::ValidationError {
-        protocol::ValidationError::new(String::from("password"), String::from(""))
-    }
-
-    fn expiration_date_error() -> protocol::ValidationError {
-        protocol::ValidationError::new(String::from("expiration_date"), String::from(""))
-    }
-
-    fn kind_error() -> protocol::ValidationError {
-        protocol::ValidationError::new(String::from("kind"), String::from(""))
-    }
-
-    fn cvv_error() -> protocol::ValidationError {
-        protocol::ValidationError::new(String::from("cvv"), String::from(""))
+    fn empty_error(field: &str) -> protocol::ValidationError {
+        protocol::ValidationError::new(String::from(field), String::from(""))
     }
 }
