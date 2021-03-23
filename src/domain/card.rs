@@ -43,54 +43,41 @@ struct Entity {
     status: Status,
     cvv: String,
 }
+
+
+
 impl Entity {
     fn from(card: protocol::Card) -> Result<Entity, protocol::ValidationError> {
-        // TODO: extract Uuid:parse_str validation to a macro
-        let customer_id = match Uuid::parse_str(card.customer_id.as_str()) {
-            Ok(ci) => ci,
-            Err(err) => return Err(protocol::ValidationError::new(String::from("customer_id"), card.customer_id.clone()))
-        };
+        macro_rules! validate_uuid_field {
+        ($field:tt, $field_str:expr) => {
+            let $field = match Uuid::parse_str(card.$field.as_str()) {
+                Ok(ci) => ci, // TODO: check how to evaluate field_str
+                Err(err) => return Err(protocol::ValidationError::new(String::from($field_str), card.$field.clone()))
+            };
+        }}
 
-        let org_id = match Uuid::parse_str(card.org_id.as_str()) {
-            Ok(ci) => ci,
-            Err(err) => return Err(protocol::ValidationError::new(String::from("org_id"), card.org_id.clone()))
-        };
+        macro_rules! validate_str_field {
+        ($field:tt, $field_str:expr) => {
+            let $field = match card.$field.is_empty() { // TODO: the same above
+                true => return Err(protocol::ValidationError::new(String::from($field_str), card.$field.clone())),
+                false => card.$field
+            };
+        }}
 
-        let program_id = match Uuid::parse_str(card.program_id.as_str()) {
-            Ok(ci) => ci,
-            Err(err) => return Err(protocol::ValidationError::new(String::from("program_id"), card.program_id.clone()))
-        };
-
-        let account_id = match Uuid::parse_str(card.account_id.as_str()) {
-            Ok(ci) => ci,
-            Err(err) => return Err(protocol::ValidationError::new(String::from("account_id"), card.account_id.clone()))
-        };
-
-        let printed_name = match card.printed_name.is_empty() {
-            true => return Err(protocol::ValidationError::new(String::from("printed_name"), card.printed_name.clone())),
-            false => card.printed_name
-        };
-
-        // TODO: extract String#is_empty() validation to a macro
-        let password = match card.password.is_empty() {
-            true => return Err(protocol::ValidationError::new(String::from("password"), card.password.clone())),
-            false => card.password
-        };
-
-        let expiration_date = match card.expiration_date.is_empty() {
-            true => return Err(protocol::ValidationError::new(String::from("expiration_date"), card.expiration_date.clone())),
-            false => card.expiration_date
-        };
+        validate_uuid_field!(customer_id, "customer_id");
+        validate_uuid_field!(org_id, "org_id");
+        validate_uuid_field!(program_id, "program_id");
+        validate_uuid_field!(account_id, "account_id");
+        validate_str_field!(printed_name, "printed_name");
+        validate_str_field!(password, "password");
+        validate_str_field!(expiration_date, "expiration_date");
 
         let kind = match Kind::from(card.kind.as_str()) {
             Ok(k) => k,
             Err(msg) => return Err(protocol::ValidationError::new(String::from("kind"), card.kind))
         };
 
-        let cvv = match card.cvv.is_empty() {
-            true => return Err(protocol::ValidationError::new(String::from("cvv"), card.cvv.clone())),
-            false => card.cvv
-        };
+        validate_str_field!(cvv, "cvv");
 
         Ok(Entity{
             id: Default::default(),
