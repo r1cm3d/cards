@@ -3,6 +3,7 @@ use uuid::Uuid;
 use chrono::{DateTime, NaiveDate, NaiveDateTime};
 use std::format;
 use std::fmt::Error;
+use regex::Regex;
 
 enum Kind {
     Plastic,
@@ -69,7 +70,16 @@ impl Entity {
         validate_uuid_field!(program_id, "program_id");
         validate_uuid_field!(account_id, "account_id");
         validate_str_field!(printed_name, "printed_name");
+        let re = Regex::new(r"^[A-Z\s]+$").unwrap();
+        if !re.is_match(&printed_name) {
+            return Err(protocol::ValidationError::new(String::from("printed_name"), printed_name))
+        }
         validate_str_field!(password, "password");
+        let re = Regex::new(r"^\d{6}$").unwrap();
+        if !re.is_match(&password) {
+            return Err(protocol::ValidationError::new(String::from("password"), password))
+        }
+
         validate_str_field!(expiration_date, "expiration_date");
 
         let kind = match Kind::from(card.kind.as_str()) {
@@ -78,6 +88,10 @@ impl Entity {
         };
 
         validate_str_field!(cvv, "cvv");
+        let re = Regex::new(r"^\d{4}$").unwrap();
+        if !re.is_match(&password) {
+            return Err(protocol::ValidationError::new(String::from("cvv"), cvv))
+        }
 
         Ok(Entity{
             id: Default::default(),
@@ -156,10 +170,17 @@ mod tests {
     test_invalid_field!(test_invalid_expiration_date, a_card_without_expiration_date(), empty_error("expiration_date"));
     test_invalid_field!(test_invalid_kind, a_card_without_kind(), empty_error("kind"));
     test_invalid_field!(test_invalid_cvv, a_card_without_cvv(), empty_error("cvv"));
+    test_invalid_field!(test_invalid_printed_name_invalid_characters_number, a_card_with_invalid_printed_name("R1CARDO"), invalid_error("printed_name", "R1CARDO"));
+    test_invalid_field!(test_invalid_printed_name_invalid_characters_cedilha, a_card_with_invalid_printed_name("RIÇARDO"), invalid_error("printed_name", "RIÇARDO"));
+    test_invalid_field!(test_invalid_printed_name_invalid_characters_special_characters, a_card_with_invalid_printed_name("#RIC*RDO"), invalid_error("printed_name", "#RIC*RDO"));
+    test_invalid_field!(test_invalid_password_with_letters, a_card_with_invalid_password("0912C8"), invalid_error("password", "0912C8"));
+    test_invalid_field!(test_invalid_password_with_more_than_six_characters, a_card_with_invalid_password("091261128"), invalid_error("password", "091261128"));
 
-    // TODO: test pattern for printed name
-    // TODO: test pattern for password
-    // TODO: test pattern for expiration date
+    test_invalid_field!(test_invalid_cvv_with_letters, a_card_with_invalid_cvv("0B12"), invalid_error("cvv", "0B12"));
+    test_invalid_field!(test_invalid_cvv_with_more_than_four_characters, a_card_with_invalid_cvv("61112"), invalid_error("cvv", "61112"));
+
+
+    // TODO: test pattern for expiration date PS: Validate valid dates
     // TODO: test pattern for cvv
     // TODO: test valid creation
 
@@ -326,7 +347,66 @@ mod tests {
         }
     }
 
+    fn a_card_with_invalid_printed_name(invalid_printed_name: &str) -> protocol::Card {
+        protocol::Card{
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "3ee15c70-b7b4-4b87-ba43-38eba70f98c4".to_string(),
+            program_id: "c0a4cc71-5c11-43cb-b74f-2b577012449f".to_string(),
+            account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
+            printed_name: invalid_printed_name.to_string(),
+            password: "321421".to_string(),
+            expiration_date: "2010-11-12T13:14:15Z".to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "PLASTIC".to_string(),
+            status: "".to_string(),
+            cvv: "123".to_string()
+        }
+    }
+
+    fn a_card_with_invalid_password(invalid_password: &str) -> protocol::Card {
+        protocol::Card{
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "3ee15c70-b7b4-4b87-ba43-38eba70f98c4".to_string(),
+            program_id: "c0a4cc71-5c11-43cb-b74f-2b577012449f".to_string(),
+            account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
+            printed_name: "RICARDO".to_string(),
+            password: invalid_password.to_string(),
+            expiration_date: "2010-11-12T13:14:15Z".to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "PLASTIC".to_string(),
+            status: "".to_string(),
+            cvv: "123".to_string()
+        }
+    }
+
+    fn a_card_with_invalid_cvv(invalid_cvv: &str) -> protocol::Card {
+        protocol::Card{
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "3ee15c70-b7b4-4b87-ba43-38eba70f98c4".to_string(),
+            program_id: "c0a4cc71-5c11-43cb-b74f-2b577012449f".to_string(),
+            account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
+            printed_name: "RICARDO".to_string(),
+            password: "517412".to_string(),
+            expiration_date: "2010-11-12T13:14:15Z".to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "PLASTIC".to_string(),
+            status: "".to_string(),
+            cvv: invalid_cvv.to_string()
+        }
+    }
+
+
     fn empty_error(field: &str) -> protocol::ValidationError {
         protocol::ValidationError::new(String::from(field), String::from(""))
+    }
+
+    fn invalid_error(field: &str, inputted_value: &str) -> protocol::ValidationError {
+        protocol::ValidationError::new(String::from(field), String::from(inputted_value))
     }
 }
