@@ -181,7 +181,6 @@ mod tests {
 
 
     // TODO: test pattern for expiration date PS: Validate valid dates
-    // TODO: test pattern for cvv
     // TODO: test valid creation
 
     // TODO: extract those functions to macro
