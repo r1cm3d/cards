@@ -80,17 +80,22 @@ impl Entity {
             return Err(protocol::ValidationError::new(String::from("password"), password))
         }
 
-        validate_str_field!(expiration_date, "expiration_date");
-
         let kind = match Kind::from(card.kind.as_str()) {
             Ok(k) => k,
             Err(msg) => return Err(protocol::ValidationError::new(String::from("kind"), card.kind))
         };
 
+        //TODO: extract regex validation to a macro
         validate_str_field!(cvv, "cvv");
-        let re = Regex::new(r"^\d{4}$").unwrap();
-        if !re.is_match(&password) {
+        let re = Regex::new(r"^\d{3}\d?$").unwrap();
+        if !re.is_match(&cvv) {
             return Err(protocol::ValidationError::new(String::from("cvv"), cvv))
+        }
+
+        validate_str_field!(expiration_date, "expiration_date");
+        let re = Regex::new(r"^[01]\d{2}$").unwrap();
+        if !re.is_match(&expiration_date) {
+            return Err(protocol::ValidationError::new(String::from("expiration_date"), expiration_date))
         }
 
         Ok(Entity{
@@ -167,7 +172,6 @@ mod tests {
     test_invalid_field!(test_invalid_program_id, a_card_without_program_id(), empty_error("program_id"));
     test_invalid_field!(test_invalid_printed_name, a_card_without_printed_name(), empty_error("printed_name"));
     test_invalid_field!(test_invalid_password, a_card_without_password(), empty_error("password"));
-    test_invalid_field!(test_invalid_expiration_date, a_card_without_expiration_date(), empty_error("expiration_date"));
     test_invalid_field!(test_invalid_kind, a_card_without_kind(), empty_error("kind"));
     test_invalid_field!(test_invalid_cvv, a_card_without_cvv(), empty_error("cvv"));
     test_invalid_field!(test_invalid_printed_name_invalid_characters_number, a_card_with_invalid_printed_name("R1CARDO"), invalid_error("printed_name", "R1CARDO"));
@@ -175,12 +179,12 @@ mod tests {
     test_invalid_field!(test_invalid_printed_name_invalid_characters_special_characters, a_card_with_invalid_printed_name("#RIC*RDO"), invalid_error("printed_name", "#RIC*RDO"));
     test_invalid_field!(test_invalid_password_with_letters, a_card_with_invalid_password("0912C8"), invalid_error("password", "0912C8"));
     test_invalid_field!(test_invalid_password_with_more_than_six_characters, a_card_with_invalid_password("091261128"), invalid_error("password", "091261128"));
-
     test_invalid_field!(test_invalid_cvv_with_letters, a_card_with_invalid_cvv("0B12"), invalid_error("cvv", "0B12"));
     test_invalid_field!(test_invalid_cvv_with_more_than_four_characters, a_card_with_invalid_cvv("61112"), invalid_error("cvv", "61112"));
+    test_invalid_field!(test_invalid_empty_expiration_date, a_card_without_expiration_date(), empty_error("expiration_date"));
+    test_invalid_field!(test_invalid_expiration_date_with_letters, a_card_with_invalid_expiration_date("ABCEFG"), invalid_error("expiration_date", "ABCEFG"));
+    test_invalid_field!(test_invalid_expiration_date_with_invalid_month, a_card_with_invalid_expiration_date("1300"), invalid_error("expiration_date", "1300"));
 
-
-    // TODO: test pattern for expiration date PS: Validate valid dates
     // TODO: test valid creation
 
     // TODO: extract those functions to macro
@@ -304,9 +308,9 @@ mod tests {
             expiration_date: "".to_string(),
             issuing_date: "".to_string(),
             pan: "".to_string(),
-            kind: "".to_string(),
+            kind: "PLASTIC".to_string(),
             status: "".to_string(),
-            cvv: "".to_string()
+            cvv: "745".to_string()
         }
     }
 
@@ -337,7 +341,7 @@ mod tests {
             account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
             printed_name: "RICARDO MEDEIROS".to_string(),
             password: "321421".to_string(),
-            expiration_date: "2010-11-12T13:14:15Z".to_string(),
+            expiration_date: "0724".to_string(),
             issuing_date: "".to_string(),
             pan: "".to_string(),
             kind: "PLASTIC".to_string(),
@@ -355,7 +359,7 @@ mod tests {
             account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
             printed_name: invalid_printed_name.to_string(),
             password: "321421".to_string(),
-            expiration_date: "2010-11-12T13:14:15Z".to_string(),
+            expiration_date: "0724".to_string(),
             issuing_date: "".to_string(),
             pan: "".to_string(),
             kind: "PLASTIC".to_string(),
@@ -373,7 +377,7 @@ mod tests {
             account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
             printed_name: "RICARDO".to_string(),
             password: invalid_password.to_string(),
-            expiration_date: "2010-11-12T13:14:15Z".to_string(),
+            expiration_date: "0724".to_string(),
             issuing_date: "".to_string(),
             pan: "".to_string(),
             kind: "PLASTIC".to_string(),
@@ -390,8 +394,8 @@ mod tests {
             program_id: "c0a4cc71-5c11-43cb-b74f-2b577012449f".to_string(),
             account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
             printed_name: "RICARDO".to_string(),
-            password: "517412".to_string(),
-            expiration_date: "2010-11-12T13:14:15Z".to_string(),
+            password: "072465".to_string(),
+            expiration_date: "0724".to_string(),
             issuing_date: "".to_string(),
             pan: "".to_string(),
             kind: "PLASTIC".to_string(),
@@ -399,6 +403,25 @@ mod tests {
             cvv: invalid_cvv.to_string()
         }
     }
+
+    fn a_card_with_invalid_expiration_date(invalid_expiration_date: &str) -> protocol::Card {
+        protocol::Card {
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "3ee15c70-b7b4-4b87-ba43-38eba70f98c4".to_string(),
+            program_id: "c0a4cc71-5c11-43cb-b74f-2b577012449f".to_string(),
+            account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
+            printed_name: "RICARDO".to_string(),
+            password: "517412".to_string(),
+            expiration_date: invalid_expiration_date.to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "PLASTIC".to_string(),
+            status: "".to_string(),
+            cvv: "451".to_string()
+        }
+    }
+
 
 
     fn empty_error(field: &str) -> protocol::ValidationError {
