@@ -48,7 +48,7 @@ struct Entity {
 
 
 impl Entity {
-    fn from(card: protocol::Card) -> Result<Entity, protocol::ValidationError> {
+        fn from(card: protocol::Card) -> Result<Entity, protocol::ValidationError> {
         macro_rules! validate_uuid_field {
         ($field:tt, $field_str:expr) => {
             let $field = match Uuid::parse_str(card.$field.as_str()) {
@@ -65,38 +65,30 @@ impl Entity {
             };
         }}
 
+        macro_rules! validate_str_field_with_regex {
+        ($field:tt, $regex:expr, $field_str:expr) => {
+            let re = Regex::new($regex).unwrap();
+            let $field = match re.is_match(&card.$field) {
+                true => card.$field,
+                false => return Err(protocol::ValidationError::new(String::from($field_str), card.$field.clone()))
+            };
+        }}
+
         validate_uuid_field!(customer_id, "customer_id");
         validate_uuid_field!(org_id, "org_id");
         validate_uuid_field!(program_id, "program_id");
         validate_uuid_field!(account_id, "account_id");
-        validate_str_field!(printed_name, "printed_name");
-        let re = Regex::new(r"^[A-Z\s]+$").unwrap();
-        if !re.is_match(&printed_name) {
-            return Err(protocol::ValidationError::new(String::from("printed_name"), printed_name))
-        }
-        validate_str_field!(password, "password");
-        let re = Regex::new(r"^\d{6}$").unwrap();
-        if !re.is_match(&password) {
-            return Err(protocol::ValidationError::new(String::from("password"), password))
-        }
+        validate_str_field_with_regex!(printed_name, r"^[A-Z\s]+$", "printed_name");
+        validate_str_field_with_regex!(password, r"^\d{6}$", "password");
+        validate_str_field_with_regex!(cvv, r"^\d{3}\d?$", "cvv");
+        // FIXME: this regex is wrong, add all scenarios: 0724 1232 1112 1204
+        validate_str_field_with_regex!(expiration_date, r"^[01]\d{2}$", "expiration_date");
 
         let kind = match Kind::from(card.kind.as_str()) {
             Ok(k) => k,
             Err(msg) => return Err(protocol::ValidationError::new(String::from("kind"), card.kind))
         };
 
-        //TODO: extract regex validation to a macro
-        validate_str_field!(cvv, "cvv");
-        let re = Regex::new(r"^\d{3}\d?$").unwrap();
-        if !re.is_match(&cvv) {
-            return Err(protocol::ValidationError::new(String::from("cvv"), cvv))
-        }
-
-        validate_str_field!(expiration_date, "expiration_date");
-        let re = Regex::new(r"^[01]\d{2}$").unwrap();
-        if !re.is_match(&expiration_date) {
-            return Err(protocol::ValidationError::new(String::from("expiration_date"), expiration_date))
-        }
 
         Ok(Entity{
             id: Default::default(),
@@ -171,9 +163,9 @@ mod tests {
     test_invalid_field!(test_invalid_org_id, a_card_without_org_id(), empty_error("org_id"));
     test_invalid_field!(test_invalid_program_id, a_card_without_program_id(), empty_error("program_id"));
     test_invalid_field!(test_invalid_printed_name, a_card_without_printed_name(), empty_error("printed_name"));
-    test_invalid_field!(test_invalid_password, a_card_without_password(), empty_error("password"));
+    test_invalid_field!(test_invalid_password, a_card_without_password(), invalid_error("password", ""));
     test_invalid_field!(test_invalid_kind, a_card_without_kind(), empty_error("kind"));
-    test_invalid_field!(test_invalid_cvv, a_card_without_cvv(), empty_error("cvv"));
+    test_invalid_field!(test_invalid_cvv, a_card_without_cvv(), invalid_error("cvv", ""));
     test_invalid_field!(test_invalid_printed_name_invalid_characters_number, a_card_with_invalid_printed_name("R1CARDO"), invalid_error("printed_name", "R1CARDO"));
     test_invalid_field!(test_invalid_printed_name_invalid_characters_cedilha, a_card_with_invalid_printed_name("RIÇARDO"), invalid_error("printed_name", "RIÇARDO"));
     test_invalid_field!(test_invalid_printed_name_invalid_characters_special_characters, a_card_with_invalid_printed_name("#RIC*RDO"), invalid_error("printed_name", "#RIC*RDO"));
@@ -181,13 +173,13 @@ mod tests {
     test_invalid_field!(test_invalid_password_with_more_than_six_characters, a_card_with_invalid_password("091261128"), invalid_error("password", "091261128"));
     test_invalid_field!(test_invalid_cvv_with_letters, a_card_with_invalid_cvv("0B12"), invalid_error("cvv", "0B12"));
     test_invalid_field!(test_invalid_cvv_with_more_than_four_characters, a_card_with_invalid_cvv("61112"), invalid_error("cvv", "61112"));
-    test_invalid_field!(test_invalid_empty_expiration_date, a_card_without_expiration_date(), empty_error("expiration_date"));
+    test_invalid_field!(test_invalid_empty_expiration_date, a_card_without_expiration_date(), invalid_error("expiration_date", ""));
     test_invalid_field!(test_invalid_expiration_date_with_letters, a_card_with_invalid_expiration_date("ABCEFG"), invalid_error("expiration_date", "ABCEFG"));
     test_invalid_field!(test_invalid_expiration_date_with_invalid_month, a_card_with_invalid_expiration_date("1300"), invalid_error("expiration_date", "1300"));
 
     // TODO: test valid creation
 
-    // TODO: extract those functions to macro
+    // TODO: check if it is possible to extract these functions to a macro
     fn a_card_without_customer_id() -> protocol::Card {
         protocol::Card{
             id: "".to_string(),
@@ -328,7 +320,7 @@ mod tests {
             pan: "".to_string(),
             kind: "".to_string(),
             status: "".to_string(),
-            cvv: "".to_string()
+            cvv: "512".to_string()
         }
     }
 
@@ -421,8 +413,6 @@ mod tests {
             cvv: "451".to_string()
         }
     }
-
-
 
     fn empty_error(field: &str) -> protocol::ValidationError {
         protocol::ValidationError::new(String::from(field), String::from(""))
