@@ -45,8 +45,6 @@ struct Entity {
     cvv: String,
 }
 
-
-
 impl Entity {
         fn from(card: protocol::Card) -> Result<Entity, protocol::ValidationError> {
         macro_rules! validate_uuid_field {
@@ -88,6 +86,10 @@ impl Entity {
             Err(msg) => return Err(protocol::ValidationError::new(String::from("kind"), card.kind))
         };
 
+        //TODO: add call to generate pan service passing program_id as argument
+        //TODO: add call to mapper mapping entity to protocol
+        //TODO: add call to mapper mapping protocol to entity
+        //TODO: add call to persist at card repository passing card protocol as argument
 
         Ok(Entity{
             id: Default::default(),
