@@ -81,8 +81,7 @@ impl Entity {
         validate_str_field_with_regex!(printed_name, r"^[A-Z\s]+$", "printed_name");
         validate_str_field_with_regex!(password, r"^\d{6}$", "password");
         validate_str_field_with_regex!(cvv, r"^\d{3}\d?$", "cvv");
-        // FIXME: this regex is wrong, add all scenarios: 0724 1232 1112 1204
-        validate_str_field_with_regex!(expiration_date, r"^[01]\d{2}$", "expiration_date");
+        validate_str_field_with_regex!(expiration_date, r"^(0\d|1[0-2])\d{2}$", "expiration_date");
 
         let kind = match Kind::from(card.kind.as_str()) {
             Ok(k) => k,
