@@ -5,7 +5,8 @@ use actix_web::web;
 pub fn default(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope(handler::card::SCOPE)
-            .data::<Box<dyn card::Creator>>(Box::new(card::Service::new()))
+            //FIXME: fix injection here
+            .data::<Box<dyn card::Creator>>(Box::new(card::Service::new(Box::new(()), Box::new(()), Box::new(()), Box::new(()))))
             .route("", web::post().to(handler::card::create)),
     )
     .route("/status", web::get().to(handler::status::check_status));

@@ -4,6 +4,22 @@ use chrono::{DateTime, NaiveDate, NaiveDateTime};
 use std::format;
 use std::fmt::Error;
 use regex::Regex;
+use std::borrow::Borrow;
+
+enum Status {
+    Enabled,
+    Cancelled,
+    Blocked
+}
+impl Status {
+    fn to_string(&self) -> Result<String, String> {
+        match self {
+            Status::Enabled => Ok("ENABLED".to_string()),
+            Status::Cancelled => Ok("CANCELLED".to_string()),
+            Status::Blocked => Ok("BLOCKED".to_string()),
+        }
+    }
+}
 
 enum Kind {
     Plastic,
@@ -20,14 +36,15 @@ impl Kind {
             _ => Err(format!("Unknown kind {}", description))
         }
     }
-}
 
-enum Status {
-    Enabled,
-    Cancelled,
-    Blocked
+    fn to_string(&self) -> Result<String, String> {
+        match self {
+            Kind::Plastic => Ok("PLASTIC".to_string()),
+            Kind::Recurring => Ok("RECURRING".to_string()),
+            Kind::Temporary => Ok("TEMPORARY".to_string()),
+        }
+    }
 }
-
 
 struct Entity {
     id: uuid::Uuid,
@@ -46,7 +63,60 @@ struct Entity {
 }
 
 impl Entity {
-        fn from(card: protocol::Card) -> Result<Entity, protocol::ValidationError> {
+    fn to_protocol(&self) -> protocol::Card {
+        protocol::Card{
+            id: self.id.to_string(),
+            customer_id: self.customer_id.to_string(),
+            org_id: self.org_id.to_string(),
+            program_id: self.program_id.to_string(),
+            account_id: self.program_id.to_string(),
+            printed_name: self.printed_name.to_string(),
+            password: self.password.to_string(),
+            expiration_date: self.expiration_date.to_string(),
+            issuing_date: self.issuing_date.to_string(),
+            pan: self.pan.to_string(),
+            kind: self.kind.to_string().unwrap(),
+            status: self.status.to_string().unwrap(),
+            cvv: self.cvv.to_string()
+        }
+    }
+}
+
+pub trait PanGenerator {
+    fn generate(&self, program_id: uuid::Uuid) -> Result<String, Error>;
+}
+
+pub trait UuidGenerator {
+    fn generate(&self) -> Result<uuid::Uuid, Error>;
+}
+
+pub trait TimeService {
+    fn now(&self) -> chrono::NaiveDateTime;
+}
+
+pub trait Repository {
+    fn save(&self, card: &protocol::Card) -> Option<Error>;
+}
+
+pub(crate) struct Service {
+    uuid_generator: Box<dyn UuidGenerator>,
+    time_service: Box<dyn TimeService>,
+    pan_generator: Box<dyn PanGenerator>,
+    repository: Box<dyn Repository>,
+}
+
+impl Service {
+    pub(crate) fn new(uuid_generator :Box<dyn UuidGenerator>, time_service :Box<dyn TimeService>,
+                      pan_generator :Box<dyn PanGenerator>, repository :Box<dyn Repository>) -> Service {
+        Service {
+            uuid_generator,
+            time_service,
+            pan_generator,
+            repository
+        }
+    }
+
+    fn validate(&self, card: protocol::Card) -> Result<Entity, protocol::ValidationError> {
         macro_rules! validate_uuid_field {
         ($field:tt, $field_str:expr) => {
             let $field = match Uuid::parse_str(card.$field.as_str()) {
@@ -83,16 +153,11 @@ impl Entity {
 
         let kind = match Kind::from(card.kind.as_str()) {
             Ok(k) => k,
-            Err(msg) => return Err(protocol::ValidationError::new(String::from("kind"), card.kind))
+            Err(_) => return Err(protocol::ValidationError::new(String::from("kind"), card.kind))
         };
 
-        //TODO: add call to generate pan service passing program_id as argument
-        //TODO: add call to mapper mapping entity to protocol
-        //TODO: add call to mapper mapping protocol to entity
-        //TODO: add call to persist at card repository passing card protocol as argument
-
         Ok(Entity{
-            id: Default::default(),
+            id: self.uuid_generator.generate().unwrap(),
             customer_id,
             org_id,
             program_id,
@@ -100,8 +165,8 @@ impl Entity {
             printed_name,
             password,
             expiration_date,
-            issuing_date: NaiveDateTime::parse_from_str("2020-04-12", "%Y-%m-%d").unwrap(),
-            pan: "".to_string(),
+            issuing_date: self.time_service.now(), //NaiveDateTime::parse_from_str("2020-04-12", "%Y-%m-%d").unwrap(),
+            pan: self.pan_generator.generate(program_id).unwrap(),
             kind,
             status: Status::Enabled,
             cvv
@@ -113,33 +178,13 @@ pub trait Creator {
     fn create(&self, dto: protocol::Card) -> Result<protocol::Card, protocol::ValidationError>;
 }
 
-pub(crate) struct Service {}
-
-impl Service {
-    pub(crate) fn new() -> Service {
-        Service {}
-    }
-}
-
 impl Creator for Service {
-    fn create(&self, card: protocol::Card) -> Result<protocol::Card, protocol::ValidationError> {
-        let entity = Entity::from(card)?;
+    fn create(&self, input: protocol::Card) -> Result<protocol::Card, protocol::ValidationError> {
+        let entity = self.validate(input)?;
+        let output = entity.to_protocol();
+        self.repository.save(&output);
 
-        Ok(protocol::Card{
-            id: "".to_string(),
-            customer_id: entity.customer_id.to_string(),
-            org_id: "".to_string(),
-            program_id: "".to_string(),
-            account_id: "".to_string(),
-            printed_name: "".to_string(),
-            password: "".to_string(),
-            expiration_date: "".to_string(),
-            issuing_date: "".to_string(),
-            pan: "".to_string(),
-            kind: "".to_string(),
-            status: "".to_string(),
-            cvv: "".to_string()
-        })
+        Ok(output)
     }
 }
 
@@ -147,11 +192,39 @@ impl Creator for Service {
 mod tests {
     use crate::protocol;
     use super::*;
+    use chrono::Utc;
+
+    struct Mock {}
+
+    impl UuidGenerator for Mock {
+        fn generate(&self) -> Result<uuid::Uuid, Error> {
+            Ok(uuid::Uuid::default())
+        }
+    }
+
+    impl TimeService for Mock {
+        fn now(&self) -> chrono::NaiveDateTime {
+            Utc::now().naive_utc()
+        }
+    }
+
+    impl PanGenerator for Mock {
+        fn generate(&self, program_id: uuid::Uuid) -> Result<String, Error> {
+            Ok(String::from("4012000033330026"))
+        }
+    }
+
+    impl Repository for Mock {
+        fn save(&self, card: &protocol::Card) -> Option<Error> {
+            None
+        }
+    }
 
     macro_rules! test_invalid_field {
     ($name:ident, $input:expr, $exp:expr) => {
         #[test]
         fn $name() {
+            //FIXME: Add other parameters here
             let svc = Service::new();
 
             let act = svc.create($input).unwrap_err();
@@ -179,6 +252,50 @@ mod tests {
     test_invalid_field!(test_invalid_expiration_date_with_invalid_month, a_card_with_invalid_expiration_date("1300"), invalid_error("expiration_date", "1300"));
 
     // TODO: test valid creation
+    #[test]
+    fn create() {
+        let pan_generator_mock = Box::new(Mock{});
+        let repository_mock = Box::new(Mock{});
+        let uuid_generator_mock = Box::new(Mock{});
+        let time_service_mock = Box::new(Mock{});
+        let svc = Service::new(uuid_generator_mock, time_service_mock,
+                               pan_generator_mock, repository_mock);
+        let exp = protocol::Card{
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "3ee15c70-b7b4-4b87-ba43-38eba70f98c4".to_string(),
+            program_id: "c0a4cc71-5c11-43cb-b74f-2b577012449f".to_string(),
+            account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
+            printed_name: "RICARDO".to_string(),
+            password: "517412".to_string(),
+            expiration_date: "0724".to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "PLASTIC".to_string(),
+            status: "".to_string(),
+            cvv: "451".to_string()
+        };
+        let input = protocol::Card{
+            id: "".to_string(),
+            customer_id: "a3643446-76fc-4516-8e43-bb6600ca118e".to_string(),
+            org_id: "3ee15c70-b7b4-4b87-ba43-38eba70f98c4".to_string(),
+            program_id: "c0a4cc71-5c11-43cb-b74f-2b577012449f".to_string(),
+            account_id: "ba3df3ae-1da8-4b0a-be8c-e9f903d1f7de".to_string(),
+            printed_name: "RICARDO".to_string(),
+            password: "517412".to_string(),
+            expiration_date: "0724".to_string(),
+            issuing_date: "".to_string(),
+            pan: "".to_string(),
+            kind: "PLASTIC".to_string(),
+            status: "".to_string(),
+            cvv: "451".to_string()
+        };
+
+        let act = svc.create(input).unwrap_err();
+
+        // FIXME: fix assertion here
+        assert!(true);
+    }
 
     // TODO: check if it is possible to extract these functions to a macro
     fn a_card_without_customer_id() -> protocol::Card {
